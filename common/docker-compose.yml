@@ -1,0 +1,41 @@
+version: "3.7"
+
+services:      
+  nginx:
+    container_name: common_nginx
+    build: ./nginx
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - proxy_network
+    volumes:
+      - certbot-certs:/etc/letsencrypt
+      - certbot-challenges:/tmp/letsencrypt
+    #command: tail -f /dev/null
+
+  certbot:
+    restart: unless-stopped
+    image: vdhpieter/letsencrypt-webroot
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - certbot-certs:/etc/letsencrypt
+      - certbot-challenges:/tmp/letsencrypt
+    environment:
+      - DOMAINS=**DOMAINS**
+      - EMAIL=**EMAIL**
+      - WEBROOT_PATH=/tmp/letsencrypt
+      - EXP_LIMIT=30
+      - CHECK_FREQ=30
+      - CHICKENEGG=1
+      - STAGING=0
+
+networks:
+    proxy_network:
+        name: proxy_network
+
+volumes:
+  certbot-challenges:
+    external: true
+  certbot-certs:
+    external: true

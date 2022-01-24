@@ -1,0 +1,151 @@
+version: '2'
+services:
+
+  plex:
+    container_name: plex
+    image: plexinc/pms-docker
+    restart: unless-stopped
+    environment:
+      - TZ=pacific/auckland
+      - PLEX_CLAIM=**CLAIM**
+    ports:
+      - 32400:32400
+      - 1900:1900
+      - 5353:5353
+      - 8324:8324
+      - 32410:32410
+      - 32412:32412
+      - 32413:32413
+      - 32414:32414
+      - 32469:32469
+    expose:
+      - 32400
+    volumes:
+      - /htpc/plex/config:/config
+      - /htpc/plex/transcode:/transcode
+      - /mnt:/data
+
+  transmission:
+    image: ghcr.io/linuxserver/transmission
+    container_name: transmission
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Pacific/Auckland
+      - TRANSMISSION_WEB_HOME=/combustion-release/ #optional
+      - USER=**USERNAME** #optional
+      - PASS=**PASSWORD** #optional
+    volumes:
+      - /htpc/config:/config
+      - /htpc/downloading:/downloading
+      - /htpc/downloads:/downloads
+      - /htpc/watch:/watch
+    ports:
+      - 9091:9091
+      - 51413:51413
+      - 51413:51413/udp
+    restart: unless-stopped
+
+  medusa:
+    image: pymedusa/medusa
+    container_name: medusa
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Pacific/Auckland
+    volumes:
+      - /mnt:/data
+      - /htpc/config/medusa:/config
+      - /htpc/downloads:/downloads
+    ports:
+      - 8081:8081
+    expose:
+      - 8081
+    restart: unless-stopped
+
+  couchpotato:
+    image: lscr.io/linuxserver/couchpotato
+    container_name: couchpotato
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Pacific/Auckland
+    volumes:
+      - /htpc/config/couchpotato:/config
+      - /htpc/downloads:/downloads
+      - /mnt:/data
+    expose:
+      - 5050
+    ports:
+      - 5050:5050
+    restart: unless-stopped
+
+  emby:
+    image: emby/embyserver
+    container_name: emby
+    # runtime: nvidia # Expose NVIDIA GPUs
+    network_mode: host # Enable DLNA and Wake-on-Lan
+    environment:
+      - UID=1000 # The UID to run emby as (default: 2)
+      - GID=100 # The GID to run emby as (default 2)
+      - GIDLIST=100 # A comma-separated list of additional GIDs to run emby as (default: 2)
+    volumes:
+      - /htpc/emby:/config # Configuration directory
+      - /mnt/USB1:/mnt/share1 # Media directory
+      - /mnt/USB2:/mnt/share2 # Media directory
+    ports:
+      - 8096:8096 # HTTP port
+      - 8920:8920 # HTTPS port
+    devices:
+      - /dev/dri:/dev/dri # VAAPI/NVDEC/NVENC render nodes
+    restart: unless-stopped
+
+  jackett:
+    image: lscr.io/linuxserver/jackett
+    container_name: jackett
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Pacific/Auckland
+      - AUTO_UPDATE=true #optional
+      # - RUN_OPTS=<run options here> #optional
+    volumes:
+      - /htpc/config/jackett:/config
+      # - <path to blackhole>:/downloads
+    ports:
+      - 9117:9117
+    restart: unless-stopped
+
+  nginx:
+    container_name: htpc_nginx
+    build: ./nginx
+    expose:
+      - 80
+      - 443
+    networks:
+      - default
+      - proxy_network
+
+  radarr:
+    image: lscr.io/linuxserver/radarr
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Pacific/Auckland
+    volumes:
+      - /htpc/config/radarr:/config
+      - /mnt:/movies #optional
+      - /htpc/downloads:/downloads #optional
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+
+networks:
+  proxy_network:
+    external:
+        name: proxy_network
+
+volumes:
+  certbot-certs:
+    external: true
